@@ -1,105 +1,136 @@
-from dataclasses import dataclass, field
+from collections import deque
 
-@dataclass
 class Grafo:
-    g: set = field(default_factory=set)
-    matriz_adjacencia: list[list[int]] = field(default_factory=list)
-    num_vertices: int = 0
+    def __init__(self):
+        self.lista_adjacencia = []
+        self.num_vertices = 0
 
-    def inserir_vertice(self, vert: str) -> str:
-        """Insere um vértice no grafo"""
-        if vert in self.g:
-            return f"Vértice '{vert}' já existe."
-        self.g.add(vert)
+    def inserir_vertice(self):
+        """Adiciona um novo vértice ao grafo"""
+        # O novo vértice é simplesmente adicionado no final da lista
+        self.lista_adjacencia.append([])
         self.num_vertices += 1
-        # Atualiza matriz de adjacência
-        for linha in self.matriz_adjacencia:
-            linha.append(0)
-        self.matriz_adjacencia.append([0] * self.num_vertices)
-        return f"Vértice '{vert}' adicionado com sucesso."
 
-    def remover_vertice(self, vert: str) -> str:
-        """Remove um vértice e suas conexões"""
-        if vert not in self.g:
-            return f"Vértice '{vert}' não existe."
-        idx = list(self.g).index(vert)
-        self.g.remove(vert)
+    def remover_vertice(self, vertice):
+        """Remove um vértice do grafo"""
+        if vertice >= self.num_vertices or vertice < 0:
+            print("Vértice não existe no grafo.")
+            return
+
+        # 1. Remove o vértice (lista) da lista de adjacência
+        self.lista_adjacencia.pop(vertice)
         self.num_vertices -= 1
-        self.matriz_adjacencia.pop(idx)
-        for linha in self.matriz_adjacencia:
-            linha.pop(idx)
-        return f"Vértice '{vert}' removido com sucesso."
+        
+        # 2. Remove todas as referências ao vértice removido (arestas de entrada)
+        # E atualiza os índices dos vizinhos que eram maiores que o vértice removido
+        for i in range(self.num_vertices):
+            nova_lista = []
+            for vizinho in self.lista_adjacencia[i]:
+                if vizinho != vertice:
+                    # Se o índice do vizinho era maior, ele agora deve ser menor
+                    nova_lista.append(vizinho if vizinho < vertice else vizinho - 1)
+            self.lista_adjacencia[i] = nova_lista
 
-    def inserir_aresta(self, vert_a: str, vert_b: str, directed: bool = False) -> str:
-        """Insere uma aresta entre dois vértices"""
-        if vert_a not in self.g or vert_b not in self.g:
-            return "Um ou ambos os vértices não existem."
-        idx_a = list(self.g).index(vert_a)
-        idx_b = list(self.g).index(vert_b)
-        self.matriz_adjacencia[idx_a][idx_b] = 1
-        if not directed:
-            self.matriz_adjacencia[idx_b][idx_a] = 1
-        return f"Aresta entre '{vert_a}' e '{vert_b}' adicionada."
+    def adicionar_aresta(self, origem, destino):
+        """Adiciona uma aresta direcionada do vértice 'origem' para o vértice 'destino'"""
+        if origem < self.num_vertices and destino < self.num_vertices:
+            if destino not in self.lista_adjacencia[origem]:
+                self.lista_adjacencia[origem].append(destino)
+        else:
+            print("Vértices inválidos para a aresta.")
 
-    def remover_aresta(self, vert_a: str, vert_b: str, directed: bool = False) -> str:
-        """Remove uma aresta entre dois vértices"""
-        if vert_a not in self.g or vert_b not in self.g:
-            return "Um ou ambos os vértices não existem."
-        idx_a = list(self.g).index(vert_a)
-        idx_b = list(self.g).index(vert_b)
-        self.matriz_adjacencia[idx_a][idx_b] = 0
-        if not directed:
-            self.matriz_adjacencia[idx_b][idx_a] = 0
-        return f"Aresta entre '{vert_a}' e '{vert_b}' removida."
+    def remover_aresta(self, origem, destino):
+        """Remove uma aresta direcionada do vértice 'origem' para o vértice 'destino'"""
+        if origem < self.num_vertices and destino < self.num_vertices:
+            if destino in self.lista_adjacencia[origem]:
+                self.lista_adjacencia[origem].remove(destino)
+        else:
+            print("Vértices inválidos para remover a aresta.")
 
-    def grau_vertices(self) -> dict:
-        """Calcula o grau de cada vértice"""
-        vertices = list(self.g)
-        graus = {}
-        for i, vert in enumerate(vertices):
-            grau = sum(self.matriz_adjacencia[i])
-            graus[vert] = grau
-        return graus
+    def grau_vertice(self, vertice):
+        """Calcula o grau de um vértice"""
+        if vertice < self.num_vertices:
+            # Grau de Saída: número de vizinhos (comprimento da lista)
+            grau_saida = len(self.lista_adjacencia[vertice])
+            
+            # Grau de Entrada: número de vezes que 'vertice' aparece como vizinho em outras listas
+            grau_entrada = 0
+            for i in range(self.num_vertices):
+                if vertice in self.lista_adjacencia[i]:
+                    grau_entrada += 1
+                    
+            return grau_saida, grau_entrada
+        else:
+            print("Vértice inválido.")
+            return None, None
 
-    def existe_aresta(self, vert_a: str, vert_b: str) -> bool:
-        """Verifica se há uma aresta entre dois vértices"""
-        if vert_a not in self.g or vert_b not in self.g:
-            return False
-        idx_a = list(self.g).index(vert_a)
-        idx_b = list(self.g).index(vert_b)
-        return self.matriz_adjacencia[idx_a][idx_b] == 1
+    def existe_aresta(self, origem, destino):
+        """Verifica se existe uma aresta entre os vértices 'origem' e 'destino'"""
+        if origem < self.num_vertices and destino < self.num_vertices:
+            return destino in self.lista_adjacencia[origem]
+        return False
 
-    def vizinhos(self, vert: str) -> list:
+    def vizinhos(self, vertice):
         """Lista os vizinhos de um vértice"""
-        if vert not in self.g:
+        if vertice < self.num_vertices:
+            return self.lista_adjacencia[vertice]
+        else:
+            print("Vértice inválido.")
             return []
-        idx = list(self.g).index(vert)
-        vertices = list(self.g)
-        return [vertices[i] for i, val in enumerate(self.matriz_adjacencia[idx]) if val == 1]
 
-    def percurso_possivel(self, caminho: list[str]) -> bool:
-        """Verifica se um percurso é possível no grafo"""
-        for i in range(len(caminho) - 1):
-            if not self.existe_aresta(caminho[i], caminho[i + 1]):
-                return False
-        return True
+    def percurso_possivel(self, origem, destino):
+        """Verifica se um percurso entre dois vértices é possível """
+        if origem >= self.num_vertices or destino >= self.num_vertices:
+            print("Vértices inválidos.")
+            return False
 
-    def exibir_matriz(self):
-        """Mostra a matriz de adjacência"""
-        print("Matriz de Adjacência:")
-        g = list(self.g)
-        print(f"    {"  ".join(g)}")
-        for index, linha in enumerate(self.matriz_adjacencia):
-            print(f"{g[index]}: {linha}")
+        visitados = [False] * self.num_vertices
+        return self._dfs(origem, destino, visitados)
+
+    def _dfs(self, origem, destino, visitados):
+
+        if origem == destino:
+            return True
+
+        visitados[origem] = True
+
+        # Itera apenas sobre os vizinhos diretos (mais rápido que Matriz de Adjacência)
+        for vizinho in self.lista_adjacencia[origem]:
+            if not visitados[vizinho]:
+                if self._dfs(vizinho, destino, visitados):
+                    return True
+        return False
+
+    def mostrar_matriz(self):
+        """Exibe a lista de adjacência (renomeado para refletir a estrutura)"""
+        print("Lista de Adjacência:")
+        for i, vizinhos in enumerate(self.lista_adjacencia):
+            print(f"Vértice {i}: {vizinhos}")
 
 
-g = Grafo()
-print(g.inserir_vertice("A"))
-print(g.inserir_vertice("B"))
-print(g.inserir_vertice("C"))
-print(g.inserir_aresta("A", "B"))
-print(g.inserir_aresta("B", "C"))
-g.exibir_matriz()
-print("Grau dos vértices:", g.grau_vertices())
-print("Vizinhos de B:", g.vizinhos("B"))
-print("Percurso possível A → B → C:", g.percurso_possivel(["A", "B", "C"]))
+# --- EXEMPLO DE USO ---
+
+grafo = Grafo()
+grafo.inserir_vertice() # 0
+grafo.inserir_vertice() # 1
+grafo.inserir_vertice() # 2
+grafo.inserir_vertice() # 3
+
+grafo.adicionar_aresta(0, 1)
+grafo.adicionar_aresta(1, 2)
+grafo.adicionar_aresta(2, 3)
+
+grafo.mostrar_matriz()
+
+print("\nGrau de cada vértice:")
+for v in range(grafo.num_vertices):
+    grau_saida, grau_entrada = grafo.grau_vertice(v)
+    print(f"Vértice {v}: Grau de saída = {grau_saida}, Grau de entrada = {grau_entrada}")
+
+print("\nVerificando se existe aresta de 0 para 2:", grafo.existe_aresta(0, 2))
+print("Verificando se existe aresta de 1 para 0:", grafo.existe_aresta(1, 0))
+
+print("\nVizinhos do vértice 1:", grafo.vizinhos(1))
+
+print("\nPercurso de 0 a 3 é possível:", grafo.percurso_possivel(0, 3))
+print("Percurso de 3 a 0 é possível:", grafo.percurso_possivel(3, 0))
