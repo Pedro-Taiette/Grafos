@@ -1,145 +1,91 @@
-from collections import deque
+from dataclasses import dataclass, field
 
+@dataclass
 class Grafo:
+    g: set = field(default_factory=set)          # conjunto de vértices
+    arestas: list[tuple[str, str]] = field(default_factory=list)  # lista de arestas (origem, destino)
+    num_vertices: int = 0
 
-    def __init__(self):
-        self.grafo = {}
+    def inserir_vertice(self, vert: str) -> str:
+        """Insere um vértice no grafo"""
+        if vert in self.g:
+            return f"Vértice '{vert}' já existe."
+        self.g.add(vert)
+        self.num_vertices += 1
+        return f"Vértice '{vert}' adicionado com sucesso."
 
-    def adicionar_vertice(self, vertice):
-        """Adiciona um vértice ao grafo."""
-        if vertice not in self.grafo:
-            self.grafo[vertice] = {}
-            print(f"Vértice '{vertice}' adicionado.")
-        else:
-            print(f"Vértice '{vertice}' já existe.")
+    def remover_vertice(self, vert: str) -> str:
+        """Remove um vértice e suas conexões"""
+        if vert not in self.g:
+            return f"Vértice '{vert}' não existe."
+        self.g.remove(vert)
+        self.num_vertices -= 1
+        # Remove todas as arestas que contêm esse vértice
+        self.arestas = [(a, b) for (a, b) in self.arestas if a != vert and b != vert]
+        return f"Vértice '{vert}' removido com sucesso."
 
-    def remover_vertice(self, vertice):
-        """Remove um vértice e todas as arestas conectadas a ele."""
-        if vertice not in self.grafo:
-            print(f"Erro: Vértice '{vertice}' não encontrado.")
-            return
+    def inserir_aresta(self, vert_a: str, vert_b: str, directed: bool = False) -> str:
+        """Insere uma aresta entre dois vértices"""
+        if vert_a not in self.g or vert_b not in self.g:
+            return "Um ou ambos os vértices não existem."
 
-        del self.grafo[vertice]
+        if (vert_a, vert_b) not in self.arestas:
+            self.arestas.append((vert_a, vert_b))
+        if not directed and (vert_b, vert_a) not in self.arestas:
+            self.arestas.append((vert_b, vert_a))
+        return f"Aresta entre '{vert_a}' e '{vert_b}' adicionada."
 
-        for v in self.grafo:
-            if vertice in self.grafo[v]:
-                del self.grafo[v][vertice]
+    def remover_aresta(self, vert_a: str, vert_b: str, directed: bool = False) -> str:
+        """Remove uma aresta entre dois vértices"""
+        if vert_a not in self.g or vert_b not in self.g:
+            return "Um ou ambos os vértices não existem."
 
-        print(f"Vértice '{vertice}' e suas arestas removidos.")
+        if (vert_a, vert_b) in self.arestas:
+            self.arestas.remove((vert_a, vert_b))
+        if not directed and (vert_b, vert_a) in self.arestas:
+            self.arestas.remove((vert_b, vert_a))
+        return f"Aresta entre '{vert_a}' e '{vert_b}' removida."
 
-    def adicionar_aresta(self, v1, v2, peso=1, direcionado=False):
-        self.adicionar_vertice(v1)
-        self.adicionar_vertice(v2)
+    def grau_vertices(self) -> dict:
+        """Calcula o grau de cada vértice"""
+        graus = {v: 0 for v in self.g}
+        for (a, b) in self.arestas:
+            if a in graus:
+                graus[a] += 1
+        return graus
 
-        self.grafo[v1][v2] = peso
-        print(f"Aresta '{v1}' -> '{v2}' (peso: {peso}) adicionada.")
+    def existe_aresta(self, vert_a: str, vert_b: str) -> bool:
+        """Verifica se há uma aresta entre dois vértices"""
+        return (vert_a, vert_b) in self.arestas
 
-        if not direcionado:
-            self.grafo[v2][v1] = peso
-            print(f"Aresta '{v2}' -> '{v1}' (peso: {peso}) adicionada (não-direcionado).")
+    def vizinhos(self, vert: str) -> list:
+        """Lista os vizinhos de um vértice"""
+        if vert not in self.g:
+            return []
+        return [b for (a, b) in self.arestas if a == vert]
 
-    def remover_aresta(self, v1, v2, direcionado=False):
-        if v1 not in self.grafo or v2 not in self.grafo:
-            print(f"Erro: Um dos vértices ('{v1}' ou '{v2}') não existe.")
-            return
+    def percurso_possivel(self, caminho: list[str]) -> bool:
+        """Verifica se um percurso é possível no grafo"""
+        for i in range(len(caminho) - 1):
+            if not self.existe_aresta(caminho[i], caminho[i + 1]):
+                return False
+        return True
 
-        if v2 in self.grafo[v1]:
-            del self.grafo[v1][v2]
-            print(f"Aresta '{v1}' -> '{v2}' removida.")
-
-        if not direcionado and v1 in self.grafo[v2]:
-            del self.grafo[v2][v1]
-            print(f"Aresta '{v2}' -> '{v1}' removida (não-direcionado).")
-
-    def existe_aresta(self, v1, v2):
-        if v1 not in self.grafo or v2 not in self.grafo:
-            return False
-
-        return v2 in self.grafo[v1]
-
-    def mostrar_grafo(self):
-        if not self.grafo:
-            print("O grafo está vazio.")
-            return
-
-        print("\n--- Estrutura do Grafo (Lista de Adjacência) ---")
-        for vertice, vizinhos in self.grafo.items():
-            if not vizinhos:
-                print(f"{vertice}: {{}}")
-            else:
-                print(f"{vertice}:")
-                for vizinho, peso in vizinhos.items():
-                    print(f"  -> {vizinho} (peso: {peso})")
-        print("--------------------------------------------------\n")
-
-    def bfs(self, inicio):
-        if inicio not in self.grafo:
-            print(f"Erro: Vértice de início '{inicio}' não existe.")
-            return
-
-        visitados = set()
-        fila = deque([inicio])
-        ordem_visita = []
-
-        visitados.add(inicio)
-
-        while fila:
-            vertice_atual = fila.popleft()
-            ordem_visita.append(vertice_atual)
-
-            for vizinho in self.grafo[vertice_atual]:
-                if vizinho not in visitados:
-                    visitados.add(vizinho)
-                    fila.append(vizinho)
-
-        print(f"Percurso BFS a partir de '{inicio}': {ordem_visita}")
-        return ordem_visita
-
-    def dfs(self, inicio):
-        if inicio not in self.grafo:
-            print(f"Erro: Vértice de início '{inicio}' não existe.")
-            return
-
-        visitados = set()
-        pilha = [inicio]
-        ordem_visita = []
-
-        while pilha:
-            vertice_atual = pilha.pop()
-
-            if vertice_atual not in visitados:
-                visitados.add(vertice_atual)
-                ordem_visita.append(vertice_atual)
-
-                for vizinho in reversed(list(self.grafo[vertice_atual].keys())):
-                    if vizinho not in visitados:
-                        pilha.append(vizinho)
-
-        print(f"Percurso DFS a partir de '{inicio}': {ordem_visita}")
-        return ordem_visita
-
-
-# --- EXEMPLO DE USO ---
+    def exibir_arestas(self):
+        """Mostra a lista de arestas"""
+        print("Lista de Arestas:")
+        for (a, b) in self.arestas:
+            print(f"{a} -> {b}")
+        if not self.arestas:
+            print("(nenhuma aresta)")
 
 g = Grafo()
-
-g.adicionar_aresta('A', 'B', peso=5)
-g.adicionar_aresta('A', 'C', peso=3)
-g.adicionar_aresta('B', 'C', peso=2)
-g.adicionar_aresta('B', 'D', peso=8)
-g.adicionar_aresta('C', 'E', peso=7)
-g.adicionar_vertice('F')
-
-g.mostrar_grafo()
-
-print(f"Existe aresta A-B? {g.existe_aresta('A', 'B')}") # True
-print(f"Existe aresta A-D? {g.existe_aresta('A', 'D')}") # False
-
-g.bfs('A')
-g.dfs('A')
-
-print("\n--- Modificando o Grafo ---")
-g.remover_aresta('A', 'C')
-g.remover_vertice('D')
-
-g.mostrar_grafo()
+print(g.inserir_vertice("A"))
+print(g.inserir_vertice("B"))
+print(g.inserir_vertice("C"))
+print(g.inserir_aresta("A", "B"))
+print(g.inserir_aresta("B", "C"))
+g.exibir_arestas()
+print("Grau dos vértices:", g.grau_vertices())
+print("Vizinhos de B:", g.vizinhos("B"))
+print("Percurso possível A -> B -> C:", g.percurso_possivel(["A", "B", "C"]))
