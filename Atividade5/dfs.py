@@ -24,33 +24,31 @@ class Grafo:
             
         return visited
 
-    def bfs_com_valor_altearado_de_pop(self, starting_vertex : str):
-        """
-        1. Inserir o vértice inicial na fila
-        2. Iniciar a lista de visitados vazia
-        3. Enquanto a fila não estiver vazia:
-            a. Retirar o primeiro vertice da fila
-            b. Marcar vértice como visitado
-            c. Obter os vizinhos do vértice
-            d. Para cada vizinho:
-                  i. Verificar se o vizinho já não está na fila
-                 ii. Verificar se o vizinho já não foi visitado
-                iii. Adicionar o vizinho na Fila
-        4. Retornar visitados
-        """
-        queue = [starting_vertex] # vertice inicial
+    def dfs_cycles(self, starting_vertex : str):
+        heap = [starting_vertex]
         visited = []
 
-        while queue != []:
-            pick = queue.pop()
+        while heap != []:
+            """
+            i. Verificar se o vizinho não está na pilha
+            ii. Verificar se o vizinho já não foi visitado
+                1. Caso falso para os dois:
+                    a. adicionar na pilha com o vértice atual como pai
+                2. se não:
+                    a. caso o vizinho não seja o pai:
+                        i. ciclo foi detectado
+            """
+            pick = heap.pop()
             visited.append(pick)
             neighbours = self._get_neighbours(pick)
+            neighbours.sort(reverse=False)
 
             for x in neighbours:
-                if x in visited or x in queue:
+                if x in visited or x in heap:
                     continue
-                queue.append(x)
-        
+
+                heap.append(x)
+            
         return visited
 
     def _get_neighbours(self, vertex: str) -> list[str]:
@@ -90,4 +88,3 @@ g.add_path_unordered("V6", "V7")
 g.add_path_unordered("V7", "V8")
 
 print(f"dfs: {g.dfs('V1')}")
-print(f"bfs: {g.bfs('V1')}")
